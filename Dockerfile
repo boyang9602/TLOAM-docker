@@ -21,7 +21,7 @@ RUN wget https://cmake.org/files/v3.22/cmake-3.22.6.tar.gz \
 RUN wget https://github.com/jbeder/yaml-cpp/archive/refs/tags/yaml-cpp-0.6.3.tar.gz \
     && tar -zxvf yaml-cpp-0.6.3.tar.gz && rm yaml-cpp-0.6.3.tar.gz \
     && cd yaml-cpp-yaml-cpp-0.6.3 && mkdir build && cd build \
-    && cmake [-G generator] [-DYAML_BUILD_SHARED_LIBS=ON] .. \
+    && cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DYAML_BUILD_SHARED_LIBS=ON .. \
     && make && make install
 
 # build Open3D from source, it is slow
@@ -57,12 +57,25 @@ RUN cd ceres-solver-2.0.0 && mkdir build && cd build && cmake ../ && make && mak
 
 RUN rm -rf cmake-3.22.6 yaml-cpp-yaml-cpp-0.6.3 open3d-devel-linux-x86_64-cxx11-abi-0.15.1 ceres-solver-2.0.0
 
+# Original googletest.cmake has some issues. 
+# I am not familiar with it. 
+# This fix can make the build pass, however it may be wrong.
+# need to further check. 
+RUN cat <<EOF > /googletest.cmake
+include(FetchContent)
+FetchContent_Declare(
+googletest
+URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
+)
+EOF
+
 RUN mkdir -p /tloam_ws/src && cd /tloam_ws \
      && catkin init \
      && catkin config --merge-devel \
      && catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release \ 
      && cd src \
-     && git clone https://github.com/zhoupengwei/tloam.git
+     && git clone --depth 1 --branch o3dv0.15 https://github.com/boyang9602/tloam.git \
+     && mv /googletest.cmake tloam/cmake/
 
-# this will fail, check https://github.com/zhoupengwei/tloam/issues/8 and https://github.com/zhoupengwei/tloam/issues/9
-# RUN cd /tloam_ws/src && catkin build
+# This works in container, but failed during image build
+# RUN cd /tloam_ws/src/ && catkin build
